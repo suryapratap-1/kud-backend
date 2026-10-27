@@ -1,0 +1,6 @@
+allowBuilds:
+  esbuild: true
+
+# drizzle-kit pulls an old esbuild (<=0.24.2, GHSA-67mh-4wv8-2f99) through the deprecated @esbuild-kit loader.
+overrides:
+  "@esbuild-kit/core-utils>esbuild": "^0.25.0"
