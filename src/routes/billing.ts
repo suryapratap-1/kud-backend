@@ -52,7 +52,7 @@ billingRouter.post("/subscribe", async (req, res) => {
     res.json({ subscriptionId, keyId: env.RAZORPAY_KEY_ID, user: { name: user.name, email: user.email } });
   } catch (error) {
     if (error instanceof BillingNotConfiguredError) throw new HttpError(503, error.message);
-    console.error(error);
+    req.log.error({ err: error }, "Couldn't create subscription");
     throw new HttpError(502, "We couldn't start checkout. Try again in a minute.");
   }
 });
@@ -77,12 +77,12 @@ billingRouter.post("/verify", async (req, res) => {
   res.json({ ok: true });
 });
 
-billingRouter.post("/cancel", async (_req, res) => {
+billingRouter.post("/cancel", async (req, res) => {
   try {
     await cancelSubscription(sessionOf(res).user.id);
     res.json({ ok: true });
   } catch (error) {
-    console.error(error);
+    req.log.error({ err: error }, "Couldn't cancel subscription");
     throw new HttpError(502, "We couldn't cancel right now. Try again in a minute.");
   }
 });

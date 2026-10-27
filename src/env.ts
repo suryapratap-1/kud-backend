@@ -12,6 +12,8 @@ const optional = z
 const schema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   PORT: z.coerce.number().int().default(4000),
+  // Defaults to "debug" in development and "info" in production.
+  LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
 
   // Where this API is reachable from browsers (used in emails, media links, auth callbacks).
   API_URL: z.url(),

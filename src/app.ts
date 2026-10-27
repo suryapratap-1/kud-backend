@@ -2,9 +2,12 @@ import { toNodeHandler } from "better-auth/node";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
+import { randomUUID } from "node:crypto";
+import { pinoHttp } from "pino-http";
 import { env } from "@/env";
 import { errorHandler } from "@/http";
 import { auth, CLIENT_IP_HEADER_INTERNAL } from "@/lib/auth";
+import { logger, redactUrl } from "@/lib/logger";
 import { clientIp } from "@/lib/rate-limit";
 import { requireTrustedOrigin } from "@/middleware/origin";
 import { billingRouter } from "@/routes/billing";
@@ -28,6 +31,24 @@ export function createApp() {
     req.headers[CLIENT_IP_HEADER_INTERNAL] = clientIp(req);
     next();
   });
+
+  // One line per request, with an id that also tags every log written while handling it.
+  app.use(
+    pinoHttp({
+      logger,
+      genReqId: (_req, res) => {
+        const id = randomUUID();
+        res.setHeader("X-Request-Id", id);
+        return id;
+      },
+      autoLogging: { ignore: (req) => req.url === "/health" },
+      customLogLevel: (_req, res, error) => (error || res.statusCode >= 500 ? "error" : res.statusCode >= 400 ? "warn" : "info"),
+      serializers: {
+        req: (req) => ({ id: req.id, method: req.method, url: redactUrl(req.url), ip: req.headers[CLIENT_IP_HEADER_INTERNAL] }),
+        res: (res) => ({ statusCode: res.statusCode }),
+      },
+    }),
+  );
 
   app.get("/health", (_req, res) => {
     res.json({ ok: true });

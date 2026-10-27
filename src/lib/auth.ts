@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@/db";
 import { env, isProduction } from "@/env";
+import { logger } from "./logger";
 import { sendMail } from "./mail";
 
 export const googleEnabled = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
@@ -17,6 +18,8 @@ export const auth = betterAuth({
   // Only the frontend may send users here (callback and redirect URLs are checked against this).
   trustedOrigins: [env.FRONTEND_URL],
   database: drizzleAdapter(db, { provider: "pg", usePlural: true }),
+  // Send Better Auth's own messages through our logger so they share its format and level.
+  logger: { log: (level, message, ...args) => logger[level]({ args }, message) },
   advanced: {
     database: { generateId: "uuid" },
     // In production the frontend (app.kudos.com) and API (api.kudos.com) share the session cookie

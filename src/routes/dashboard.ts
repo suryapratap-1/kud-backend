@@ -147,7 +147,7 @@ dashboardRouter.delete("/spaces/:id", async (req, res) => {
   if (!deleted) throw new HttpError(404, "Space not found.");
   const keys = files.flatMap((row) => [row.video, row.photo]).filter((key): key is string => Boolean(key));
   // The space is already gone; a storage hiccup shouldn't turn that into an error for the owner.
-  await deleteFiles(keys).catch((error) => console.error(`Couldn't remove files for space ${deleted.id}`, error));
+  await deleteFiles(keys).catch((error) => req.log.error({ err: error, spaceId: deleted.id }, "Couldn't remove files for deleted space"));
   res.status(204).end();
 });
 

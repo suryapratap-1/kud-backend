@@ -1,4 +1,5 @@
 import { env } from "@/env";
+import { logger } from "@/lib/logger";
 
 /**
  * Verifies a Cloudflare Turnstile token. Without TURNSTILE_SECRET_KEY the check is off (local development).
@@ -20,7 +21,7 @@ export async function verifyCaptcha(token: string | null, ip: string) {
     const result = (await response.json()) as { success: boolean };
     return result.success === true;
   } catch (error) {
-    console.error("Turnstile verification failed", error);
+    logger.error({ err: error }, "Turnstile verification failed");
     return false;
   }
 }

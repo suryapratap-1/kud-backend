@@ -156,7 +156,7 @@ publicRouter.post("/spaces/:slug/reviews", async (req, res) => {
     .returning({ id: reviews.id });
 
   // Emails are best-effort: a mail outage shouldn't lose the review.
-  await Promise.allSettled([
+  const sent = await Promise.allSettled([
     sendMail({
       to: input.email,
       subject: `Confirm your review for ${space.name}`,
@@ -168,6 +168,11 @@ publicRouter.post("/spaces/:slug/reviews", async (req, res) => {
       text: `Hi ${space.ownerName},\n\n${input.name} left a ${input.rating}-star ${input.mode} review for ${space.name}.\n\nReview it in your inbox: ${env.FRONTEND_URL}/dashboard/${slug}`,
     }),
   ]);
+  for (const [i, result] of sent.entries()) {
+    if (result.status === "rejected") {
+      req.log.error({ err: result.reason, reviewId: review.id }, `Couldn't send ${i === 0 ? "reviewer confirmation" : "owner notification"} email`);
+    }
+  }
 
   res.status(201).json({ id: review.id });
 });

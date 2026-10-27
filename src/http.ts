@@ -21,7 +21,7 @@ export function valid<T>(schema: z.ZodType<T>, value: unknown, message = "Invali
   return result.data;
 }
 
-export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
+export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   if (error instanceof HttpError) {
     res.status(error.status).json({ error: error.message });
     return;
@@ -38,6 +38,6 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     res.status(error.status).json({ error: "Invalid request." });
     return;
   }
-  console.error(error);
+  req.log.error({ err: error }, "Unhandled error");
   res.status(500).json({ error: "Something went wrong on our side. Please try again." });
 };
