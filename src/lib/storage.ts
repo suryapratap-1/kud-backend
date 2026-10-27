@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { DeleteObjectsCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { env } from "@/env";
@@ -71,11 +71,7 @@ export async function deleteFiles(keys: string[]) {
 }
 
 /** Local development only; bucket files are served directly by the bucket's public URL. */
-export async function getLocalFile(key: string) {
-  const full = localPath(key);
-  const [data, info] = await Promise.all([readFile(full), stat(full)]);
-  return { data, size: info.size };
-}
+export const LOCAL_STORAGE_ROOT = LOCAL_ROOT;
 
 /** Absolute public URL for a stored file: the bucket's public URL, or this API in local development. */
 export function mediaUrl(key: string | null | undefined) {

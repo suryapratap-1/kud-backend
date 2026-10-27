@@ -27,7 +27,7 @@ Target users: small businesses, coaches, clinics, creators and SaaS founders, In
 | Reviews per widget | Up to 15 | Up to 50 |
 | "Powered by Kudos" on widgets | Shown | Removed |
 
-Prices and limits live in `plans.ts` (frontend `apps/web/src/lib/billing/plans.ts`, backend `src/lib/plans.ts`; keep both in sync).
+Prices and limits live in `plans.ts` (frontend `src/lib/billing/plans.ts`, backend `src/lib/plans.ts`; keep both in sync).
 
 ---
 
@@ -55,8 +55,8 @@ projects/
 ```
 
 ### Frontend: `wondering`
-- pnpm workspace: `apps/web` (Next.js 16, App Router, Cache Components, Tailwind v4, Motion) and `apps/widget` (embeddable `widget.js`: plain TypeScript, Shadow DOM, ~2.8 KB gzipped, no dependencies).
-- `apps/widget/src/render.ts` is used both by `widget.js` and by the dashboard's live preview, so the preview is exactly what visitors see.
+- A single pnpm package: the Next.js 16 app at the root (App Router, Cache Components, Tailwind v4, Motion) and `widget/` (embeddable `widget.js`: plain TypeScript, Shadow DOM, ~2.8 KB gzipped, no dependencies).
+- `widget/render.ts` is used both by `widget.js` and by the dashboard's live preview, so the preview is exactly what visitors see.
 - Server components and server actions call the API through `src/lib/api/server.ts`, forwarding the visitor's session cookie. Browser code calls the API directly (`API_URL`, `credentials: "include"`). Login uses the Better Auth client pointed at `<API>/auth`.
 - API response types are mirrored in `src/lib/api/types.ts`.
 
@@ -80,7 +80,7 @@ Frontend 3000 · API 4000 · Postgres 5434 (Docker) · Mailpit SMTP 1025, inbox 
 
 ## 4. Infrastructure and credentials (status, not values)
 
-Secrets live only in git-ignored files: `kudos-api/.env` (backend) and `wondering/apps/web/.env.local` (frontend, public values only). Templates with explanations: `kudos-api/.env.example` and `apps/web/.env.example`.
+Secrets live only in git-ignored files: `kudos-api/.env` (backend) and `wondering/.env.local` (frontend, public values only). Templates with explanations: `kudos-api/.env.example` and `wondering/.env.example`.
 
 | Service | Choice | Status |
 |---|---|---|

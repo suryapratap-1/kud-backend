@@ -9,7 +9,7 @@ import { getOwnedSpace, listOwnedSpaces, listSpaceReviews } from "@/lib/dashboar
 import { FREE_LIMITS } from "@/lib/plans";
 import { isReservedSlug, SLUG_PATTERN } from "@/lib/slug";
 import { deleteFiles } from "@/lib/storage";
-import { approvedReviews, getOwnedWidget, listSpaceWidgets } from "@/lib/widgets";
+import { approvedReviews, forgetWidgetPayload, getOwnedWidget, listSpaceWidgets } from "@/lib/widgets";
 import { requireAuth, sessionOf } from "@/middleware/auth";
 
 /**
@@ -228,11 +228,13 @@ dashboardRouter.patch("/widgets/:id", async (req, res) => {
   const parsed = widgetSchema.safeParse(req.body);
   if (!parsed.success) throw new HttpError(400, parsed.error.issues[0]?.message ?? "Check the widget settings.");
   await db.update(widgets).set(parsed.data).where(eq(widgets.id, widget.id));
+  forgetWidgetPayload(widget.id);
   res.status(204).end();
 });
 
 dashboardRouter.delete("/widgets/:id", async (req, res) => {
   const { widget } = await ownedWidgetOr404(sessionOf(res).user.id, req.params.id);
   await db.delete(widgets).where(eq(widgets.id, widget.id));
+  forgetWidgetPayload(widget.id);
   res.status(204).end();
 });

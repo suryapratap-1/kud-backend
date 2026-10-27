@@ -65,7 +65,11 @@ export async function getSubscription(userId: string) {
 }
 
 export async function getPlan(userId: string): Promise<PlanId> {
-  const row = await getSubscription(userId);
+  return planFromSubscription(await getSubscription(userId));
+}
+
+/** The plan rules, for callers that already loaded the subscription row (e.g. in a join). */
+export function planFromSubscription(row: Pick<typeof subscriptions.$inferSelect, "status" | "currentPeriodEnd"> | null | undefined): PlanId {
   if (!row) return "free";
   if (PAID_STATUSES.includes(row.status)) return "pro";
   // Cancelled subscriptions keep Pro until the period they paid for ends.

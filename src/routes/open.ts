@@ -2,7 +2,7 @@ import path from "node:path";
 import { Router } from "express";
 import { HttpError, idSchema, valid } from "@/http";
 import { PHOTO_TYPES, VIDEO_TYPES } from "@/lib/media-types";
-import { getLocalFile } from "@/lib/storage";
+import { LOCAL_STORAGE_ROOT } from "@/lib/storage";
 import { getWidgetPayload } from "@/lib/widgets";
 
 /*
@@ -28,16 +28,21 @@ mediaRouter.get("/{*key}", async (req, res) => {
   const key = (req.params as { key: string[] }).key.join("/");
   const contentType = TYPES[path.extname(key).toLowerCase()];
   if (!contentType) throw new HttpError(404, "Not found.");
-  const file = await getLocalFile(key).catch(() => null);
-  if (!file) throw new HttpError(404, "Not found.");
-  res
-    .set({
+  // Streams from disk and answers Range requests, so videos can be scrubbed. `root` refuses paths
+  // that escape the storage folder; the headers are only applied once a file is actually sent.
+  const options = {
+    root: LOCAL_STORAGE_ROOT,
+    dotfiles: "deny" as const,
+    cacheControl: false,
+    headers: {
       "Content-Type": contentType,
-      "Content-Length": String(file.size),
       "Cache-Control": "public, max-age=31536000, immutable",
       // Never let a browser guess a different type or run anything inside a stored file.
       "X-Content-Type-Options": "nosniff",
       "Content-Security-Policy": "default-src 'none'; sandbox",
-    })
-    .send(file.data);
+    },
+  };
+  await new Promise<void>((resolve, reject) =>
+    res.sendFile(key, options, (error) => (error && !res.headersSent ? reject(new HttpError(404, "Not found.")) : resolve())),
+  );
 });

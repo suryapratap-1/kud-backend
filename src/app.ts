@@ -1,4 +1,5 @@
 import { toNodeHandler } from "better-auth/node";
+import compression from "compression";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
@@ -25,6 +26,8 @@ export function createApp() {
 
   // Media and widget data are loaded by other sites, so resources may be read cross-origin.
   app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+  // Gzip/brotli for JSON; images and videos are already compressed and are skipped by type.
+  app.use(compression());
 
   // Hand Better Auth's rate limiter the IP we trust, overwriting anything a client sent in that header.
   app.use((req, _res, next) => {
