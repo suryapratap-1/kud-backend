@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { createWriteStream } from "node:fs";
+import { mkdir, rm } from "node:fs/promises";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import path from "node:path";
 import { DeleteObjectsCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { env } from "@/env";
@@ -36,14 +40,16 @@ function localPath(key: string) {
 /** `type` must already be validated (allowlist + file signature); it decides the extension and Content-Type. */
 export async function putFile(folder: string, file: File, type: MediaType) {
   const key = `${folder}/${randomUUID()}${extensionFor(type)}`;
-  const body = Buffer.from(await file.arrayBuffer());
+  // Streamed, so a large video is never held in memory as a whole.
+  const body = () => Readable.fromWeb(file.stream() as NodeReadableStream<Uint8Array>);
 
   if (s3) {
     await s3.send(
       new PutObjectCommand({
         Bucket: bucket,
         Key: key,
-        Body: body,
+        Body: body(),
+        ContentLength: file.size,
         ContentType: type,
         CacheControl: "public, max-age=31536000, immutable",
       }),
@@ -51,7 +57,7 @@ export async function putFile(folder: string, file: File, type: MediaType) {
   } else {
     const full = localPath(key);
     await mkdir(path.dirname(full), { recursive: true });
-    await writeFile(full, body);
+    await pipeline(body(), createWriteStream(full));
   }
   return key;
 }

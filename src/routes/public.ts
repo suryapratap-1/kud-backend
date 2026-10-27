@@ -1,4 +1,6 @@
 import { randomBytes } from "node:crypto";
+import { openAsBlob } from "node:fs";
+import { rm } from "node:fs/promises";
 import { eq } from "drizzle-orm";
 import { type Request, type Response, Router } from "express";
 import multer from "multer";
@@ -50,9 +52,10 @@ publicRouter.get("/spaces/:slug/wall", async (req, res) => {
 // Largest allowed video + photo, plus room for the text fields and multipart overhead.
 const MAX_REQUEST_BYTES = MAX_VIDEO_BYTES + MAX_PHOTO_BYTES + 1024 * 1024;
 
-// Multer stops reading as soon as a file passes its limit, so an oversized upload never fills memory.
+// Files are written to temp files on disk (never held in memory) and Multer stops reading as soon as
+// a file passes its limit. The temp files are removed when the request ends.
 const upload = multer({
-  storage: multer.memoryStorage(),
+  storage: multer.diskStorage({}),
   limits: { fileSize: MAX_VIDEO_BYTES, files: 2, fields: 12, fieldSize: 16 * 1024, parts: 14 },
 }).fields([
   { name: "video", maxCount: 1 },
@@ -63,10 +66,15 @@ function parseUpload(req: Request, res: Response) {
   return new Promise<void>((resolve, reject) => upload(req, res, (error) => (error ? reject(error) : resolve())));
 }
 
-/** Multer gives buffers; the validation and storage code works with web File objects. */
-function fileOrNull(files: Request["files"], name: string) {
+function uploadedFiles(files: Request["files"]) {
+  return !files ? [] : Array.isArray(files) ? files : Object.values(files).flat();
+}
+
+/** The validation and storage code works with web File objects; these read from the temp file lazily. */
+async function fileOrNull(files: Request["files"], name: string) {
   const file = !Array.isArray(files) ? files?.[name]?.[0] : undefined;
-  return file && file.size > 0 ? new File([new Uint8Array(file.buffer)], file.originalname, { type: file.mimetype }) : null;
+  if (!file || file.size === 0) return null;
+  return new File([await openAsBlob(file.path)], file.originalname, { type: file.mimetype });
 }
 
 publicRouter.post("/spaces/:slug/reviews", async (req, res) => {
@@ -95,6 +103,9 @@ publicRouter.post("/spaces/:slug/reviews", async (req, res) => {
     .limit(1);
   if (!space) throw new HttpError(404, "This review link doesn't exist.");
 
+  res.on("close", () => {
+    for (const file of uploadedFiles(req.files)) void rm(file.path, { force: true });
+  });
   await parseUpload(req, res);
   const body = req.body as Record<string, string | undefined>;
 
@@ -106,8 +117,8 @@ publicRouter.post("/spaces/:slug/reviews", async (req, res) => {
     rating: body.rating,
     mode: body.mode,
     text: body.text ?? "",
-    video: fileOrNull(req.files, "video"),
-    photo: fileOrNull(req.files, "photo"),
+    video: await fileOrNull(req.files, "video"),
+    photo: await fileOrNull(req.files, "photo"),
     name: body.name,
     role: body.role ?? "",
     email: body.email,
